@@ -1,7 +1,7 @@
 # Diabetes Prediction: Logistic Regression Modeling
 
 **Overview**
-This project identifies the primary risk factors for developing diabetes using a dataset of Electronic Health Records (EHRs) from a sample of 100,000 patients. The analysis builds a predictive logistic regression model to quantify how clinical variables like HbA1c levels, blood glucose, age, and comorbidities influence the likelihood of a diabetes diagnosis[cite: 2].
+This project identifies the primary risk factors for developing diabetes using a dataset of Electronic Health Records (EHRs) from a sample of 100,000 patients. The analysis builds a predictive logistic regression model to quantify how clinical variables like HbA1c levels, blood glucose, age, and comorbidities influence the likelihood of a diabetes diagnosis.
 
 **Methodology**
 * **Data Wrangling:** Cleaned and recoded overlapping categorical variables for smoking history and converted binary numeric indicators into factor variables.
