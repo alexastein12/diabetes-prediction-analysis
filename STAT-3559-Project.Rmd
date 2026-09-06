@@ -1,0 +1,285 @@
+---
+title: "STAT 3599 Project"
+date: "2026-04-24"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+```{r, echo=TRUE, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(knitr)
+library(ggplot2)
+library(GGally)
+library(flextable)
+library(magrittr)
+library(gtsummary)
+library(corrplot)
+library(ggcorrplot)
+library(broom.helpers)
+library(car)
+```
+
+# Introduction/Background
+
+Which risk factors best predict the development of diabetes? 
+In the U.S. about 37.3 million or 11% of people have either type 1 or type 2 diabetes. Type 2 Diabetes
+is the most common form, developing later in life and it coexists and causes many other health problems.
+Diabetes can cause coronary artery disease, heart attack, stroke, and other complications. Because of these
+complications, proper prevention and management of diabetes is crucial for a healthy lifestyle.
+
+# Author Contributions
+
+I developed the data dictionary mapping the clinical variables and executed the diagnostic checks for the logistic regression assumptions (including linearity and multicollinearity), while collaborating evenly with my teammates across the exploratory data analysis and model selection pipeline.
+
+# Data Summary
+
+We found our data from Kaggle. According to the provenance section in Kaggle, these data were compiled
+using the electronic health records (EHRs) that were collected from various healthcare providers. EHRs are
+digital patient medical records, and are collected by hospitals and clinics whenever a patient is there.
+
+The data was collected by a Kaggle user, using various EHRs which were then put together into a single
+dataset. It is unclear which years the data is from, but it was last updated 3 years ago. It is unclear which
+countries the data are from, but the data were collected in order to explore the relationship between various
+potential risk factors for diabetes, and whether a patient develops diabetes or not.
+
+The variables hypertension, heart disease, smoking history, gender, and diabetes were turned into a factor
+variable. Further, the levels for smoking history were condensed into 4 categories rather than six.
+
+This is individual level human data (not longitudinal). Each row is a different person.
+
+One potential issue is that the dataset does not specify whether the diabetes variable is in relation to type
+1 or type 2. Type 1 diabetes is an autoimmune disease, whereas type 2 is not, meaning type 1 cannot beprevented while type 2 can. In a comment, the author mentioned that both types should be considered when
+exploring the data, especially since the age ranges from 0 to 80 years old (younger people are most likely to
+be diagnosed with type 1 diabetes over type 2).
+
+Another potential issue is the smoking history variable. The variable is split into six categories: never, not
+current, former, current, ever, and no info. Some of the categories seem to slightly overlap (ever seems to
+overlap with not current, former, and current), and there is no specification on how a patient is categorized
+to ever versus one of the three that overlaps. For that reason, we recategorized the data into 4 categories:
+never, former, current, and no info. We combined former, not current and ever into “former.”
+
+A final potential issue is that our data is from Kaggle. While the description does say the data is from
+EHRs, the creator of the dataset also has not specified where and how he got these EHRs. Due to this, we
+are unable to confirm whether our data is completely reliable or not. 
+
+# Table
+
+|**Variable Name**|**Description**|
+|:----:|:----:|
+| diabetes | The response variable, with values of 1 indicating the presence of diabetes and 0 indicating the absence of diabetes. |
+| gender |  The biological sex of the individual. There are three categories: male, female, and other. |
+| age | The age of individual. Age ranges from 0-80 in our dataset. |
+| hypertension | A medical condition in which the blood pressure in the arteries is persistently elevated, where 0 indicates the individual does not have hypertension and 1 indicates the individual does have hypertension. |
+| heart_disease | A medical condition where 0 indicates the individual does not have heart disease and 1 indicates the individual does have heart disease. |
+| smoking_history | Categorized in 4 ways: never (the individual has never smoked), former (the individual used to smoke but does not smoke anymore), current (the individual currently smokes at the time of data collection), no info |
+| bmi | A measure of body fat based on weight and height. BMI less than 18.5 is classified as underweight, 18.5-24.9 is classified as normal, 25-29.9 is classified as overweight, and 30 or more is classified as obese. |
+| HbA1c_level | (Hemoglobin A1c) level is a measure of a person's average blood sugar level over the past 2-3 months. |
+| blood_glucose_level | Blood glucose level refers to the amount of glucose in the bloodstream at a given time. |
+
+# EDA
+```{r}
+diab <- read.csv("diabetes_prediction_dataset.csv")
+diab$smoking_history <- ifelse(diab$smoking_history == "ever" |
+diab$smoking_history == "not current",
+"former",
+diab$smoking_history)
+diab$hypertension <- factor(diab$hypertension, levels = c(0,1), labels = c("No", "Yes") )
+diab$heart_disease <- factor(diab$heart_disease, levels = c(0,1), labels = c("No", "Yes"))
+diab$smoking_history <- factor(diab$smoking_history, levels =
+c("never", "No Info", "current", "former"))
+diab$gender <- factor(diab$gender, levels = c("Female", "Male", "Other"))
+diab$diabetes <- factor(diab$diabetes, levels = c(0,1), labels = c("No", "Yes"))
+kable(table(diab$diabetes))
+
+summary(diab)
+
+sd(diab$age)
+sd(diab$bmi)
+sd(diab$HbA1c_level)
+sd(diab$blood_glucose_level)
+
+par(mfrow = c(2, 2))
+boxplot(bmi~diabetes, data=diab,col = "#FF4040",xlab= "Diabetes", ylab = "BMI")
+boxplot(HbA1c_level~diabetes, data = diab, col = "#FF4040",
+xlab= "Diabetes", ylab = "HbA1c Levels")
+boxplot(blood_glucose_level~diabetes, data = diab, col = "#FF4040",
+xlab= "Diabetes", ylab = "Blood Glucose Levels")
+boxplot(age~diabetes, data = diab,col = "#FF4040",xlab= "Diabetes", ylab = "Age")
+
+
+par(mfrow = c(1, 1))
+par(mfrow = c(2, 2))
+mosaicplot(diabetes~gender,data=diab, color = c("purple", "darkgreen"),
+main="Diabetes and Gender")
+mosaicplot(diabetes~smoking_history,data=diab, color = c("purple", "darkgreen"),
+main="Diabetes and Smoking History")
+mosaicplot(diabetes~hypertension,data=diab, color = c("purple", "darkgreen"),
+main="Diabetes and Hypertension")
+mosaicplot(diabetes~heart_disease,data=diab, color = c("purple", "darkgreen"),
+main="Diabetes and Heart Disease")
+
+par(mfrow = c(1, 1))
+cor_matrix <- cor(diab[ , c(2,6:8)])
+cor_matrix
+
+```
+Exploratory data analysis revealed several meaningful patterns between predictors and diabetes status. The
+response variable was highly imbalanced, with a substantially larger proportion of individuals without diabetes compared to those with diabetes. Among continuous predictors, HbA1c level and blood glucose level showed the strongest associations with diabetes, as individuals with diabetes consistently exhibited higher values for both variables. Age and BMI also demonstrated positive relationships with diabetes, although these associations appeared more moderate. For categorical predictors, individuals with hypertension or heart disease had noticeably higher proportions of diabetes compared to those without these conditions. Additionally, correlations among continuous predictors were generally low (e.g., age and BMI), suggesting minimal concern for multicollinearity. Overall, the EDA supports the inclusion of these variables in a logistic regression model and indicates that several predictors are meaningfully associated with diabetes status.
+
+The diabetes variable is suitable to be a logistic regression response variable because it is a binary outcome
+(0 if the individual does not have diabetes; 1 if the individual has diabetes). Logistic regression allows us to
+explore the association between a binary outcome and one or more risk factors.
+
+# Analysis
+
+```{r}
+diabMod1 <- glm(diabetes~., data= diab, family = binomial())
+summary(diabMod1)
+```
+
+The full model indicates gender may not be a significant predictor. I will test a reduced model excluding this variable.
+
+```{r}
+diabRed1 <- glm(diabetes~.-gender, data = diab, family = binomial())
+anova(diabRed1, diabMod1)
+```
+
+The ANOVA yields a high p-value, confirming we can safely drop gender. Next, I will test dropping smoking history.
+
+```{r}
+diabRed2 <- glm(diabetes~.-smoking_history, data = diab, family = binomial())
+anova(diabMod1, diabRed2)
+```
+
+
+# Assumptions
+
+**Assumption 1:** Binary Outcome \
+Our outcome variable in our analysis is diabetes, which is an indicator if the individual has diabetes (either type 1 or type 2) or not. The diabetes variable is coded as 1 = diabetes or 0 = no diabetes.
+
+
+**Assumption 2:** Each observation should be independent of the others. \
+Based on the study background and upon reviewing the data, each individual only has one set of measurements (one row). Therefore, the observations are independent.
+
+
+**Assumption 3:** Linearity \
+
+Our magenta line is falling on top of our dashed blue line with no curvature, so we meet the linearity assumption.
+
+```{r}
+crPlots(diabMod1)
+```
+
+ 
+**Assumption 4:**  No multicollinearity \
+
+All of our VIF's are clearly close to 1, so we have no major concerns for multicollinearity. 
+
+
+```{r}
+cor_matrix <- cor(diab[ , c(2,6:8)])
+cor_matrix
+
+corrplot(cor_matrix, method = "color", col=COL2('RdBu'))
+
+vif(diabMod1)
+```
+
+
+**Assumption 5:** Sufficient sample size\
+
+The total sample size is 100,000, which is sufficiently large for our logistic regression with 8 predictors (general rule: about 10 observations per predictor).  
+
+We also have that $\frac{n_{min}}{15}$ is 8500/15 = 567, so we can have no more than 567 predictors in our model. Given that we have 8, we meet this rule.
+
+
+```{r}
+kable(table(diab$diabetes))
+
+```
+
+
+We meet all of these assumptions and thus can continue with the model.
+
+
+# Interpretations
+
+```{r}
+tbl_regression(diabMod1, exp = TRUE) # from gtsummary package
+```
+
+Gender:
+The coefficient for male is 0.274409 (odds ratio of $e^{0.274} = 1.32$) with a p-value less than 0.001 and 95% CI for the odds ratio (1.23, 1.41). While adjusting for other variables in the model, the odds of having diabetes for males are 1.32 times higher than the odds of having diabetes for females.
+
+With a coefficient of 0 (odds ratio of $e^{0} = 1$), there is no difference between the odds of having diabetes for individuals identifying as "other" compared to females.
+
+Age:
+The coefficient for age is 0.046182 (odds ratio of $e^{0.046} = 1.05$) with a p-value less than 0.001 and 95% CI for the odds ratio (1.04, 1.05). While adjusting for other variables in the model, as age increases by one year, the odds of having diabetes increases by a factor of 1.05.
+
+
+Hypertension:
+The coefficient for hypertension is 0.744161 (odds ratio of $e^{0.744} = 2.1$) with a p-value less than 0.001 and 95% CI for the odds ratio (1.92, 2.31). While adjusting for other variables in the model, the odds of having diabetes for an individual with hypertension are 2.1 times higher than the odds of having diabetes for individuals without hypertension.
+
+Heart_Disease:
+The coefficient for heart_disease is 0.738888 (odds ratio of $e^{0.739} = 2.09$) with a p-value less than 0.001 and 95% CI for the odds ratio (1.86, 2.36). While adjusting for other variables in the model, the odds of having diabetes for an individual with heart disease are 2.09 times higher than the odds of having diabetes for individuals without heart disease.
+
+Smoking_History:
+
+The coefficient for currently smoking is 0.156286 (odds ratio of $e^{0.156} = 1.17$) with a p-value less than 0.001 and 95% CI for the odds ratio (1.04, 1.32). While adjusting for other variables in the model, the odds of having diabetes for an individual who is currently smoking are 1.17 times higher than the odds of having diabetes for individuals who have never smoked.
+
+The coefficient for former smoking is 0.030716 (odds ratio of $e^{0.0307} = 1.03$) with a p-value of 0.5 and 95% CI for the odds ratio (0.95, 1.12). This variable is not statistically significant, so we can not conclude a difference between the odds of diabetes for those who have never smoked and those who have formerly smoked.
+
+The coefficient for no given information of smoking is -0.573708 (odds ratio of $e^{-0.574} = 0.56$) with a p-value less than 0.001 and 95% CI for the odds ratio (0.51, 0.62). While adjusting for other variables in the model, the odds of having diabetes for an individual who has no information about smoking are about 44% lower than for individuals who have never smoked.
+
+BMI:
+The coefficient for BMI is 0.088989 (odds ratio of $e^{0.089} = 1.09$) with a p-value less than 0.001 and 95% CI for the odds ratio (1.09, 1.1). While adjusting for other variables in the model, as BMI increases by one unit, the odds of having diabetes increases by a factor of 1.09.
+
+HbA1c_level:
+The coefficient for HbA1c_level is 2.340200 (odds ratio of $e^{2.34} = 10.4$) with a p-value less than 0.001 and 95% CI for the odds ratio (9.69, 11.1). While adjusting for other variables in the model, as HbAIc level increases by one unit, the odds of having diagnosis increases by a factor of 10.4.
+
+blood_glucose_level:
+The coefficient for blood_glucose_level is 0.033355 (odds ratio of $e^{0.033} = 1.03$) with a p-value less than 0.001 and 95% CI for the odds ratio (1.03, 1.03). While adjusting for other variables in the model, as blood glucose increases by one unit, the odds of having diabetes diagnosis increases by a factor of 1.03.
+
+# Model
+
+Our final model is:
+
+$$\log\left(\frac{p}{1−p}\right) = \beta_0 + 0.274(\text{Male}) + 0.0462(\text{age}) + 0.744(\text{hypertension}) + 0.739(\text{heart\_disease}) − 0.574(\text{NoInfo}) + 0.156(\text{current}) + 0.031(\text{former}) + 0.089(\text{BMI}) + 2.34(\text{HbA1\c_level}) + 0.033(\text{blood\_glucose\_level})$$
+
+# Conclusions and Limitations
+
+Model Adequacy
+```{r}
+lltest<-diabMod1$null.deviance-diabMod1$deviance
+llpvalue<-1-pchisq(lltest,6)
+llpvalue
+```
+
+From our likelihood ratio test above, we have a p-value of 0 < 0.05. We can reject the null hypothesis (that
+the model is not adequate) in favor of the alternative hypothesis and conclude this model is adequate. We
+also have an AIC value of 22654. While by itself does not tell us much about the quality of this model, it is
+something we could use to compare this model against other models.
+
+The results of the logistic regression analysis indicate that several factors, including age, hypertension, heart
+disease, BMI, HbA1c level, blood glucose level, and smoking history, are significantly associated with the
+odds of having diabetes. In particular, HbA1c level and blood glucose level showed the strongest effects,
+which is consistent with their clinical relevance in diagnosing and monitoring diabetes. However, several
+limitations should be considered when interpreting these findings. The dataset does not distinguish between
+type 1 and type 2 diabetes, which may obscure differences in risk factors across conditions. Additionally,
+the data were obtained from secondary sources and may contain inconsistencies or inaccuracies, particularly
+in variables such as smoking history, where categories required consolidation. The observational nature of
+the dataset also prevents any causal conclusions from being drawn. Future research could improve upon this
+study by incorporating more detailed clinical variables, distinguishing between diabetes types, and using
+longitudinal data to better understand how risk factors contribute to the development of diabetes over time.
+
+# References
+
+“Diabetes: What It Is, Causes, Symptoms, Treatment & Types.” Cleveland Clinic, 17 Feb. 2023,
+my.clevelandclinic.org/health/diseases/7104-diabetes.
+Mustafa, Mohammed. “Diabetes Prediction Dataset.” Kaggle, 2023, www.kaggle.com/datasets/iammustafatz/diabetesprediction-
+dataset.
+15
