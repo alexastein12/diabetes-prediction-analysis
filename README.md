@@ -22,4 +22,4 @@ The dataset used for this model does not distinguish between Type 1 (an autoimmu
 * **Deliverable:** R Markdown (`github_document`)
 
 ## Author Contributions
-I developed the data dictionary mapping the clinical variables and executed the diagnostic checks for the logistic regression assumptions (including linearity and multicollinearity), while collaborating evenly with my teammates across the exploratory data analysis and model selection pipeline.
+I developed the clinical data dictionary and executed the diagnostic checks for the logistic regression assumptions (including linearity and multicollinearity), while collaborating evenly with my teammates across the exploratory data analysis and model selection pipeline.
